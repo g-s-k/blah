@@ -14,6 +14,9 @@
 
          body {
              flex: 1;
+             width: calc(100% - 5em);
+             max-width: 900px;
+             margin: 0 auto 0.5em;
              background-color: #efefe4;
              font-family: Helvetica, Arial, sans-serif;
              display: flex;
@@ -32,6 +35,18 @@
              overflow-y: auto;
              color: white;
              margin-bottom: 0.5em;
+         }
+
+         #chatLog > .info {
+             color: #333;
+             align-self: center;
+         }
+
+         #chatLog > i {
+             align-self: flex-end;
+             color: #999;
+             padding: 0.25em;
+             font-size: 0.8em;
          }
 
          #chatLog > span {
@@ -59,14 +74,28 @@
             <h3>a chat application</h3>
         </header>
         <div id="chatLog"></div>
-        <input id="chatEditor" />
+        <input id="chatEditor" placeholder="Type your message and press Enter..." />
 
         <script>
          const clog = document.getElementById("chatLog");
 
-         function msg(me, txt) {
+         function info(txt) {
+             const el = document.createElement("h5");
+             el.className = "info";
+             el.innerText = txt;
+             clog.appendChild(el);
+         }
+
+         function msg(txt, user) {
+             if (user) {
+                 const name = document.createElement("i");
+                 name.className = "username";
+                 name.innerText = "User " + user;
+                 clog.appendChild(name);
+                 clog.appendChild(document.createElement("br"));
+             }
              const el = document.createElement("span");
-             el.className = me ? "sent" : "recv";
+             el.className = user ? "recv" : "sent";
              el.innerText = txt;
              el.title = (new Date()).toISOString();
              clog.appendChild(el);
@@ -77,20 +106,26 @@
          const ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "ws");
 
          ws.onmessage = function(event) {
-             msg(false, event.data);
+             const d = JSON.parse(event.data);
+             if (d.hasOwnProperty("initial") && d.userId) {
+                 info("You are signed in as User #" + d.userId + ".");
+             } else {
+                 msg(d.text, d.userId);
+             }
          };
 
          function handleKeyPress(event) {
              const val = event.target.value;
              if (event.keyCode === 13 && val.trim()) {
-                 msg(true, val);
+                 msg(val);
                  ws.send(val);
                  event.target.value = "";
              }
          }
 
-         document.getElementById("chatEditor")
-                 .addEventListener("keyup", handleKeyPress);
+         const editor = document.getElementById("chatEditor");
+         editor.addEventListener("keyup", handleKeyPress);
+         editor.focus();
         </script>
     </body>
 </html>

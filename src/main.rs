@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{atomic::{AtomicUsize, Ordering}, Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, Mutex,
+};
 
 use futures::sync::mpsc;
 use warp::{filters::ws, path, Filter, Future, Stream};
@@ -23,9 +26,13 @@ fn connect_user(sock: ws::WebSocket, users: Users) -> impl Future<Item = (), Err
             .map_err(|ws_err| eprintln!("websocket send error: {}", ws_err)),
     );
 
+    let _ = tx.unbounded_send(ws::Message::text(format!(
+        "{{ \"initial\": true, \"userId\": {} }}",
+        my_id
+    )));
     users.lock().unwrap().insert(my_id, tx);
-    let users2 = users.clone();
 
+    let users2 = users.clone();
     user_rx
         .for_each(move |msg| {
             user_message(my_id, msg, &users);
@@ -47,15 +54,11 @@ fn user_message(my_id: usize, msg: ws::Message, users: &Users) {
         return;
     };
 
-    let new_msg = format!("<User#{}>: {}", my_id, msg);
+    let new_msg = format!("{{ \"userId\": {}, \"text\": \"{}\" }}", my_id, msg);
 
     for (&uid, tx) in users.lock().unwrap().iter() {
         if my_id != uid {
-            match tx.unbounded_send(ws::Message::text(new_msg.clone())) {
-                Ok(()) => (),
-                Err(_disconnected) => {
-                }
-            }
+            let _ = tx.unbounded_send(ws::Message::text(new_msg.as_ref()));
         }
     }
 }
