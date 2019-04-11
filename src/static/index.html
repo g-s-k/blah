@@ -88,11 +88,20 @@
 
          function msg(txt, user) {
              if (user) {
-                 const name = document.createElement("i");
-                 name.className = "username";
-                 name.innerText = "User " + user;
-                 clog.appendChild(name);
-                 clog.appendChild(document.createElement("br"));
+                 const clc = clog.children;
+                 (function() {
+                     if (clc.length > 3) {
+                         const stl = clc[clc.length - 4];
+                         if (stl.classList.contains("username") &&
+                             stl.innerText === ("User " + user)) return;
+                     }
+
+                     const name = document.createElement("i");
+                     name.className = "username";
+                     name.innerText = "User " + user;
+                     clog.appendChild(name);
+                     clog.appendChild(document.createElement("br"));
+                 })()
              }
              const el = document.createElement("span");
              el.className = user ? "recv" : "sent";
