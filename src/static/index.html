@@ -5,68 +5,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" name="viewport" />
         <title>blah blah blah</title>
-        <style>
-         html {
-             height: 100%;
-             display: flex;
-             flex-direction: column;
-         }
-
-         body {
-             flex: 1;
-             width: calc(100% - 5em);
-             max-width: 900px;
-             margin: 0 auto 0.5em;
-             background-color: #efefe4;
-             font-family: Helvetica, Arial, sans-serif;
-             display: flex;
-             flex-direction: column;
-             overflow: hidden;
-         }
-
-         h1, h2, h3, h4, h5, h6 {
-             font-weight: normal;
-         }
-
-         #chatLog {
-             flex: 1;
-             display: flex;
-             flex-direction: column;
-             overflow-y: auto;
-             color: white;
-             margin-bottom: 0.5em;
-         }
-
-         #chatLog > .info {
-             color: #333;
-             align-self: center;
-         }
-
-         #chatLog > i {
-             align-self: flex-end;
-             color: #999;
-             padding: 0.25em;
-             font-size: 0.8em;
-         }
-
-         #chatLog > span {
-             display: inline-block;
-             margin-bottom: 0.25em;
-             padding: 0.5em 0.5em 0.25em;
-             border-radius: 0.25em;
-             max-width: 60%;
-         }
-
-         #chatLog > .sent {
-             align-self: flex-start;
-             background-color: #999;
-         }
-
-         #chatLog > .recv {
-             align-self: flex-end;
-             background-color: #090;
-         }
-        </style>
+        <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
         <header>
@@ -75,66 +14,6 @@
         </header>
         <div id="chatLog"></div>
         <input id="chatEditor" placeholder="Type your message and press Enter..." />
-
-        <script>
-         const clog = document.getElementById("chatLog");
-
-         function info(txt) {
-             const el = document.createElement("h5");
-             el.className = "info";
-             el.innerText = txt;
-             clog.appendChild(el);
-         }
-
-         function msg(txt, user) {
-             if (user) {
-                 const clc = clog.children;
-                 (function() {
-                     if (clc.length > 3) {
-                         const stl = clc[clc.length - 4];
-                         if (stl.classList.contains("username") &&
-                             stl.innerText === ("User " + user)) return;
-                     }
-
-                     const name = document.createElement("i");
-                     name.className = "username";
-                     name.innerText = "User " + user;
-                     clog.appendChild(name);
-                     clog.appendChild(document.createElement("br"));
-                 })()
-             }
-             const el = document.createElement("span");
-             el.className = user ? "recv" : "sent";
-             el.innerText = txt;
-             el.title = (new Date()).toISOString();
-             clog.appendChild(el);
-             clog.appendChild(document.createElement("br"));
-             clog.scrollTop = clog.offsetHeight;
-         }
-
-         const ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "ws");
-
-         ws.onmessage = function(event) {
-             const d = JSON.parse(event.data);
-             if (d.hasOwnProperty("initial") && d.userId) {
-                 info("You are signed in as User #" + d.userId + ".");
-             } else {
-                 msg(d.text, d.userId);
-             }
-         };
-
-         function handleKeyPress(event) {
-             const val = event.target.value;
-             if (event.keyCode === 13 && val.trim()) {
-                 msg(val);
-                 ws.send(val);
-                 event.target.value = "";
-             }
-         }
-
-         const editor = document.getElementById("chatEditor");
-         editor.addEventListener("keyup", handleKeyPress);
-         editor.focus();
-        </script>
+        <script src="blah.js"></script>
     </body>
 </html>

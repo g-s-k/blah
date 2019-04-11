@@ -72,9 +72,24 @@ fn main() {
     let users = Arc::new(Mutex::new(HashMap::new()));
 
     let router = path!("ws")
+        .and(path::end())
         .and(ws::ws2())
         .and(warp::any().map(move || users.clone()))
         .map(|wsck: ws::Ws2, users| wsck.on_upgrade(move |sock| connect_user(sock, users)))
+        .or(path!("blah.js").and(path::end()).map(|| {
+            warp::reply::with_header(
+                include_str!("static/blah.js"),
+                "content-type",
+                "text/javascript",
+            )
+        }))
+        .or(path!("styles.css").and(path::end()).map(|| {
+            warp::reply::with_header(
+                include_str!("static/styles.css"),
+                "content-type",
+                "text/css",
+            )
+        }))
         .or(warp::any().map(|| warp::reply::html(include_str!("static/index.html"))));
 
     warp::serve(router).run(SocketAddr::new("0.0.0.0".parse().unwrap(), 8080))
