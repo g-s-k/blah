@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" name="viewport" />
+        <title>blah blah blah</title>
+        <style>
+         html {
+             height: 100%;
+             display: flex;
+             flex-direction: column;
+         }
+
+         body {
+             flex: 1;
+             background-color: #efefe4;
+             font-family: Helvetica, Arial, sans-serif;
+             display: flex;
+             flex-direction: column;
+             overflow: hidden;
+         }
+
+         h1, h2, h3, h4, h5, h6 {
+             font-weight: normal;
+         }
+
+         #chatLog {
+             flex: 1;
+             display: flex;
+             flex-direction: column;
+             overflow-y: auto;
+             color: white;
+             margin-bottom: 0.5em;
+         }
+
+         #chatLog > span {
+             display: inline-block;
+             padding: 0.5em 0.5em 0.25em;
+             border-radius: 0.25em;
+             max-width: 40%;
+         }
+
+         #chatLog > .sent {
+             align-self: flex-start;
+             background-color: #999;
+         }
+
+         #chatLog > .recv {
+             align-self: flex-end;
+             background-color: #090;
+         }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>blah</h1>
+            <h3>a chat application</h3>
+        </header>
+        <div id="chatLog"></div>
+        <input id="chatEditor" />
+
+        <script>
+         const clog = document.getElementById("chatLog");
+
+         function msg(me, txt) {
+             const el = document.createElement("span");
+             el.className = me ? "sent" : "recv";
+             el.innerText = txt;
+             el.title = (new Date()).toISOString();
+             clog.appendChild(el);
+             clog.appendChild(document.createElement("br"));
+             clog.scrollTop = clog.offsetHeight;
+         }
+
+         const ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "ws");
+
+         ws.onmessage = function(event) {
+             msg(false, event.data);
+         };
+
+         function handleKeyPress(event) {
+             const val = event.target.value;
+             if (event.keyCode === 13 && val.trim()) {
+                 msg(true, val);
+                 ws.send(val);
+                 event.target.value = "";
+             }
+         }
+
+         document.getElementById("chatEditor")
+                 .addEventListener("keyup", handleKeyPress);
+        </script>
+    </body>
+</html>
