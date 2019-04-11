@@ -62,7 +62,6 @@
         <input id="chatEditor" />
 
         <script>
-         const user = Math.random().toString(32).slice(2);
          const clog = document.getElementById("chatLog");
 
          function msg(me, txt) {
@@ -78,17 +77,14 @@
          const ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "ws");
 
          ws.onmessage = function(event) {
-             const d = JSON.parse(event.data);
-             if (d.user !== user) {
-                 msg(false, d.text);
-             }
+             msg(false, event.data);
          };
 
          function handleKeyPress(event) {
              const val = event.target.value;
              if (event.keyCode === 13 && val.trim()) {
                  msg(true, val);
-                 ws.send(JSON.stringify({ user: user, text: val }));
+                 ws.send(val);
                  event.target.value = "";
              }
          }
