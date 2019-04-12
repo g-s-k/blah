@@ -1,5 +1,7 @@
 const clog = document.getElementById("chatLog");
 
+let userId;
+
 function info(txt) {
   const el = document.createElement("h5");
   el.className = "info";
@@ -8,14 +10,15 @@ function info(txt) {
 }
 
 function msg(txt, user) {
-  if (user) {
+  if (user !== userId) {
     const clc = clog.children;
     (function() {
-      if (clc.length > 3) {
-        const stl = clc[clc.length - 4];
+      for (let idx = clc.length - 1; idx >= 0; idx--) {
+        if (clc[idx].tagName === "BR" || clc[idx].tagName === "SPAN") continue;
         if (
-          stl.classList.contains("username") &&
-          stl.innerText === "User " + user
+          clc[idx].tagName === "I" &&
+          clc[idx].classList.contains("username") &&
+          clc[idx].innerText === "User " + user
         )
           return;
       }
@@ -28,8 +31,8 @@ function msg(txt, user) {
     })();
   }
   const el = document.createElement("span");
-  el.className = user ? "recv" : "sent";
-  el.innerText = txt;
+  el.className = user === userId ? "sent" : "recv";
+  el.innerHTML = txt;
   el.title = new Date().toISOString();
   clog.appendChild(el);
   clog.appendChild(document.createElement("br"));
@@ -42,7 +45,8 @@ const ws = new WebSocket(
 
 ws.onmessage = function(event) {
   const d = JSON.parse(event.data);
-  if (d.hasOwnProperty("initial") && d.userId) {
+  if (d.hasOwnProperty("initial") && d.userId && !userId) {
+    userId = d.userId;
     info("You are signed in as User #" + d.userId + ".");
   } else {
     msg(d.text, d.userId);
@@ -52,7 +56,6 @@ ws.onmessage = function(event) {
 function handleKeyPress(event) {
   const val = event.target.value;
   if (event.keyCode === 13 && val.trim()) {
-    msg(val);
     ws.send(val);
     event.target.value = "";
   }

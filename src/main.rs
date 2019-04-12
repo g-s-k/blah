@@ -6,6 +6,7 @@ use std::sync::{
 };
 
 use futures::sync::mpsc;
+use hyper::Uri;
 use serde_derive::*;
 use warp::{filters::ws, path, Filter, Future, Stream};
 
@@ -62,6 +63,18 @@ fn connect_user(sock: ws::WebSocket, users: Users) -> impl Future<Item = (), Err
         })
 }
 
+fn annotate_message(mut msg: &str) -> String {
+    msg = msg.trim();
+
+    if msg.parse::<Uri>().is_ok() {
+        if msg.ends_with(".jpg") || msg.ends_with(".png") {
+            return format!(r#"<img src="{}" alt="inline image" />"#, msg);
+        }
+    }
+
+    msg.into()
+}
+
 fn user_message(my_id: usize, msg: ws::Message, users: &Users) {
     let msg = if let Ok(s) = msg.to_str() {
         s
@@ -71,15 +84,14 @@ fn user_message(my_id: usize, msg: ws::Message, users: &Users) {
 
     let new_msg = BlahMsg {
         user_id: my_id,
-        text: Some(msg.into()),
+        text: Some(annotate_message(msg)),
         initial: false,
     };
+
     let msg_str = serde_json::to_string(&new_msg).expect("could not serialize message");
 
-    for (&uid, tx) in users.lock().unwrap().iter() {
-        if my_id != uid {
-            let _ = tx.unbounded_send(ws::Message::text(msg_str.as_ref()));
-        }
+    for tx in users.lock().unwrap().values() {
+        let _ = tx.unbounded_send(ws::Message::text(msg_str.as_ref()));
     }
 }
 
