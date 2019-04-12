@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
+    Arc, RwLock,
 };
 
 use futures::sync::mpsc;
@@ -12,7 +12,11 @@ use warp::{filters::ws, path, Filter, Future, Stream};
 
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 
-type Users = Arc<Mutex<HashMap<usize, mpsc::UnboundedSender<ws::Message>>>>;
+struct Model {
+    users: HashMap<usize, mpsc::UnboundedSender<ws::Message>>,
+}
+
+type ModelLink = Arc<RwLock<Model>>;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +28,7 @@ struct BlahMsg {
     initial: bool,
 }
 
-fn connect_user(sock: ws::WebSocket, users: Users) -> impl Future<Item = (), Error = ()> {
+fn connect_user(sock: ws::WebSocket, model: ModelLink) -> impl Future<Item = (), Error = ()> {
     let my_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
     eprintln!("new chat user: {}", my_id);
 
@@ -46,16 +50,16 @@ fn connect_user(sock: ws::WebSocket, users: Users) -> impl Future<Item = (), Err
     let _ = tx.unbounded_send(ws::Message::text(
         serde_json::to_string(&new_msg).expect("could not serialize init message"),
     ));
-    users.lock().unwrap().insert(my_id, tx);
+    model.write().unwrap().users.insert(my_id, tx);
 
-    let users2 = users.clone();
+    let model2 = model.clone();
     user_rx
         .for_each(move |msg| {
-            user_message(my_id, msg, &users);
+            user_message(my_id, msg, &model);
             Ok(())
         })
         .then(move |result| {
-            user_disconnected(my_id, &users2);
+            user_disconnected(my_id, &model2);
             result
         })
         .map_err(move |e| {
@@ -75,7 +79,7 @@ fn annotate_message(mut msg: &str) -> String {
     msg.into()
 }
 
-fn user_message(my_id: usize, msg: ws::Message, users: &Users) {
+fn user_message(my_id: usize, msg: ws::Message, model: &ModelLink) {
     let msg = if let Ok(s) = msg.to_str() {
         s
     } else {
@@ -90,24 +94,27 @@ fn user_message(my_id: usize, msg: ws::Message, users: &Users) {
 
     let msg_str = serde_json::to_string(&new_msg).expect("could not serialize message");
 
-    for tx in users.lock().unwrap().values() {
+    for tx in model.read().unwrap().users.values() {
         let _ = tx.unbounded_send(ws::Message::text(msg_str.as_ref()));
     }
 }
 
-fn user_disconnected(my_id: usize, users: &Users) {
+fn user_disconnected(my_id: usize, model: &ModelLink) {
     eprintln!("good bye user: {}", my_id);
-    users.lock().unwrap().remove(&my_id);
+    model.write().unwrap().users.remove(&my_id);
 }
 
 fn main() {
-    let users = Arc::new(Mutex::new(HashMap::new()));
+    let model = Arc::new(RwLock::new(Model {
+        users: HashMap::new(),
+        tmp_dir: TempDir::new().expect("Could not create temporary directory."),
+    }));
 
     let router = path!("ws")
         .and(path::end())
         .and(ws::ws2())
-        .and(warp::any().map(move || users.clone()))
-        .map(|wsck: ws::Ws2, users| wsck.on_upgrade(move |sock| connect_user(sock, users)))
+        .and(warp::any().map(move || model.clone()))
+        .map(|wsck: ws::Ws2, model| wsck.on_upgrade(move |sock| connect_user(sock, model)))
         .or(path!("blah.js").and(path::end()).map(|| {
             warp::reply::with_header(
                 include_str!("static/blah.js"),
