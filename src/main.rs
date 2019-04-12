@@ -67,16 +67,23 @@ fn connect_user(sock: ws::WebSocket, model: ModelLink) -> impl Future<Item = (),
         })
 }
 
+fn is_img_uri(msg: &str) -> bool {
+    if msg.parse::<Uri>().is_ok() {
+        let msg = msg.to_lowercase();
+        msg.ends_with(".jpg") || msg.ends_with(".jpeg") || msg.ends_with(".png")
+    } else {
+        msg.starts_with("data:image/")
+    }
+}
+
 fn annotate_message(mut msg: &str) -> String {
     msg = msg.trim();
 
-    if msg.parse::<Uri>().is_ok() && (msg.ends_with(".jpg") || msg.ends_with(".png"))
-        || msg.starts_with("data:image/")
-    {
-        return format!(r#"<img src="{}" alt="inline image" />"#, msg);
+    if is_img_uri(msg) {
+        format!(r#"<img src="{}" alt="inline image" />"#, msg)
+    } else {
+        msg.into()
     }
-
-    msg.into()
 }
 
 fn user_message(my_id: usize, msg: ws::Message, model: &ModelLink) {
