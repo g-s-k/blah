@@ -47,7 +47,7 @@ const ws = new WebSocket(
   "ws://" + window.location.host + window.location.pathname + "ws"
 );
 
-ws.onmessage = function(event) {
+ws.onmessage = function handleWSMessage(event) {
   const d = JSON.parse(event.data);
   if (d.hasOwnProperty("initial") && d.userId && !userId) {
     userId = d.userId;
@@ -69,14 +69,12 @@ document.getElementById("chatFileUpload").addEventListener("click", function() {
   uploader.click();
 });
 
-function handleKeyPress(event) {
+const editor = document.getElementById("chatEditor");
+editor.addEventListener("keyup", function handleKeyPress(event) {
   const val = event.target.value;
   if (event.keyCode === 13 && val.trim()) {
     ws.send(val);
     event.target.value = "";
   }
-}
-
-const editor = document.getElementById("chatEditor");
-editor.addEventListener("keyup", handleKeyPress);
+});
 editor.focus();
