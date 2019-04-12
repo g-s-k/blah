@@ -105,9 +105,6 @@ fn user_disconnected(my_id: usize, model: &ModelLink) {
 }
 
 fn main() {
-    let tmp_dir = tempfile::tempdir()
-        .expect("Could not create temporary directory.")
-        .into_path();
     let model = Arc::new(RwLock::new(Model {
         users: HashMap::new(),
     }));
@@ -131,7 +128,7 @@ fn main() {
                 "text/css",
             )
         }))
-        .or(warp::any().map(|| warp::reply::html(include_str!("static/index.html"))));
+        .or(path::end().map(|| warp::reply::html(include_str!("static/index.html"))));
 
     warp::serve(router).run(SocketAddr::new("0.0.0.0".parse().unwrap(), 8080))
 }
