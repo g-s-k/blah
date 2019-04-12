@@ -67,13 +67,36 @@ fn connect_user(sock: ws::WebSocket, model: ModelLink) -> impl Future<Item = (),
         })
 }
 
+fn is_uri_char(c: char) -> bool {
+    (c.is_ascii_alphanumeric() || c.is_ascii_punctuation())
+        && c != '"'
+        && c != '%'
+        && c != '<'
+        && c != '>'
+        && c != '['
+        && c != '\\'
+        && c != ']'
+        && c != '^'
+        && c != '`'
+        && c != '{'
+        && c != '|'
+        && c != '}'
+}
+
 fn is_img_uri(msg: &str) -> bool {
     if msg.parse::<Uri>().is_ok() {
         let msg = msg.to_lowercase();
-        msg.ends_with(".jpg") || msg.ends_with(".jpeg") || msg.ends_with(".png")
-    } else {
-        msg.starts_with("data:image/")
+        return msg.ends_with(".jpg") || msg.ends_with(".jpeg") || msg.ends_with(".png");
+    } else if msg.starts_with("data:image/") {
+        if let Some(end_of_mime) = msg[10..].find(";") {
+            // give it some space for the image type, but not tooooo much
+            if end_of_mime < 10 && msg[end_of_mime + 11..].starts_with("base64,") {
+                return msg[end_of_mime + 11 + 7..].chars().all(is_uri_char);
+            }
+        }
     }
+
+    false
 }
 
 fn annotate_message(mut msg: &str) -> String {
