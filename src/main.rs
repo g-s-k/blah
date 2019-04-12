@@ -70,10 +70,10 @@ fn connect_user(sock: ws::WebSocket, model: ModelLink) -> impl Future<Item = (),
 fn annotate_message(mut msg: &str) -> String {
     msg = msg.trim();
 
-    if msg.parse::<Uri>().is_ok() {
-        if msg.ends_with(".jpg") || msg.ends_with(".png") {
-            return format!(r#"<img src="{}" alt="inline image" />"#, msg);
-        }
+    if msg.parse::<Uri>().is_ok() && (msg.ends_with(".jpg") || msg.ends_with(".png"))
+        || msg.starts_with("data:image/")
+    {
+        return format!(r#"<img src="{}" alt="inline image" />"#, msg);
     }
 
     msg.into()
@@ -81,21 +81,21 @@ fn annotate_message(mut msg: &str) -> String {
 
 fn user_message(my_id: usize, msg: ws::Message, model: &ModelLink) {
     let msg = if let Ok(s) = msg.to_str() {
-        s
+        let new_msg = BlahMsg {
+            user_id: my_id,
+            text: Some(annotate_message(s)),
+            initial: false,
+        };
+
+        let msg_str = serde_json::to_string(&new_msg).expect("could not serialize message");
+
+        ws::Message::text(msg_str.as_ref())
     } else {
         return;
     };
 
-    let new_msg = BlahMsg {
-        user_id: my_id,
-        text: Some(annotate_message(msg)),
-        initial: false,
-    };
-
-    let msg_str = serde_json::to_string(&new_msg).expect("could not serialize message");
-
     for tx in model.read().unwrap().users.values() {
-        let _ = tx.unbounded_send(ws::Message::text(msg_str.as_ref()));
+        let _ = tx.unbounded_send(msg.clone());
     }
 }
 
@@ -105,9 +105,11 @@ fn user_disconnected(my_id: usize, model: &ModelLink) {
 }
 
 fn main() {
+    let tmp_dir = tempfile::tempdir()
+        .expect("Could not create temporary directory.")
+        .into_path();
     let model = Arc::new(RwLock::new(Model {
         users: HashMap::new(),
-        tmp_dir: TempDir::new().expect("Could not create temporary directory."),
     }));
 
     let router = path!("ws")

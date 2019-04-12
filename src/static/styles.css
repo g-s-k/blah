@@ -62,3 +62,16 @@ h1, h2, h3, h4, h5, h6 {
   align-self: flex-end;
   background-color: #090;
 }
+
+#chatInputs {
+  display: flex;
+}
+
+#chatInputs > input[type="file"] {
+  display: none;
+}
+
+#chatEditor {
+  flex: 1;
+  margin-right: 0.25em;
+}

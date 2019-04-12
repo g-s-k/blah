@@ -53,6 +53,18 @@ ws.onmessage = function(event) {
   }
 };
 
+const reader = new FileReader();
+reader.addEventListener("load", function sendFileAsBase64() {
+  ws.send(reader.result);
+});
+const uploader = document.querySelector('#chatInputs input[type="file"]');
+uploader.addEventListener("change", function handleFileUpload(event) {
+  reader.readAsDataURL(event.target.files[0]);
+});
+document.getElementById("chatFileUpload").addEventListener("click", function() {
+  uploader.click();
+});
+
 function handleKeyPress(event) {
   const val = event.target.value;
   if (event.keyCode === 13 && val.trim()) {
