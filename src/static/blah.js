@@ -14,13 +14,22 @@ function msg(txt, user) {
     const clc = clog.children;
     (function() {
       for (let idx = clc.length - 1; idx >= 0; idx--) {
-        if (clc[idx].tagName === "BR" || clc[idx].tagName === "SPAN") continue;
-        if (
+        if (clc[idx].tagName === "BR" || clc[idx].tagName === "SPAN") {
+          if (clc[idx].className === "sent") {
+            break;
+          } else {
+            continue;
+          }
+        } else if (
           clc[idx].tagName === "I" &&
-          clc[idx].classList.contains("username") &&
-          clc[idx].innerText === "User " + user
-        )
-          return;
+          clc[idx].classList.contains("username")
+        ) {
+          if (clc[idx].innerText === "User " + user) {
+            return;
+          } else {
+            break;
+          }
+        }
       }
 
       const name = document.createElement("i");
