@@ -14,13 +14,8 @@ function msg(txt, user) {
     const clc = clog.children;
     (function() {
       for (let idx = clc.length - 1; idx >= 0; idx--) {
-        if (clc[idx].tagName === "BR" || clc[idx].tagName === "SPAN") {
-          if (clc[idx].className === "sent") {
-            break;
-          } else {
-            continue;
-          }
-        } else if (
+        if (clc[idx].tagName === "SPAN" && clc[idx].className === "sent") break;
+        else if (
           clc[idx].tagName === "I" &&
           clc[idx].classList.contains("username")
         ) {
