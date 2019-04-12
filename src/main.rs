@@ -6,11 +6,22 @@ use std::sync::{
 };
 
 use futures::sync::mpsc;
+use serde_derive::*;
 use warp::{filters::ws, path, Filter, Future, Stream};
 
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 
 type Users = Arc<Mutex<HashMap<usize, mpsc::UnboundedSender<ws::Message>>>>;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BlahMsg {
+    user_id: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    initial: bool,
+}
 
 fn connect_user(sock: ws::WebSocket, users: Users) -> impl Future<Item = (), Error = ()> {
     let my_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
@@ -26,10 +37,14 @@ fn connect_user(sock: ws::WebSocket, users: Users) -> impl Future<Item = (), Err
             .map_err(|ws_err| eprintln!("websocket send error: {}", ws_err)),
     );
 
-    let _ = tx.unbounded_send(ws::Message::text(format!(
-        "{{ \"initial\": true, \"userId\": {} }}",
-        my_id
-    )));
+    let new_msg = BlahMsg {
+        user_id: my_id,
+        text: None,
+        initial: true,
+    };
+    let _ = tx.unbounded_send(ws::Message::text(
+        serde_json::to_string(&new_msg).expect("could not serialize init message"),
+    ));
     users.lock().unwrap().insert(my_id, tx);
 
     let users2 = users.clone();
@@ -54,11 +69,16 @@ fn user_message(my_id: usize, msg: ws::Message, users: &Users) {
         return;
     };
 
-    let new_msg = format!("{{ \"userId\": {}, \"text\": \"{}\" }}", my_id, msg);
+    let new_msg = BlahMsg {
+        user_id: my_id,
+        text: Some(msg.into()),
+        initial: false,
+    };
+    let msg_str = serde_json::to_string(&new_msg).expect("could not serialize message");
 
     for (&uid, tx) in users.lock().unwrap().iter() {
         if my_id != uid {
-            let _ = tx.unbounded_send(ws::Message::text(new_msg.as_ref()));
+            let _ = tx.unbounded_send(ws::Message::text(msg_str.as_ref()));
         }
     }
 }
